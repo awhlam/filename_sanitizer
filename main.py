@@ -1,35 +1,110 @@
 from pathlib import Path
-from shutil import rmtree, copyfile
 
-INPUT_DIRECTORY_PATH = Path(r"C:\Users\Andrew\Downloads\JDownloader")
-OUTPUT_DIRECTORY_PATH = INPUT_DIRECTORY_PATH / "output"
-MAX_FILENAME_LENGTH = 55
+MAX_FILENAME_LENGTH = 100
+DEFAULT_INPUT_PATH = "/Volumes/docker/JDownloader2/output"
+
+
+def get_input_directory():
+    """Prompt user for input directory path and validate it."""
+    while True:
+        user_input = input(f"Enter the folder path (default: {DEFAULT_INPUT_PATH}): ").strip()
+
+        # Use default if user just presses Enter
+        if not user_input:
+            user_input = DEFAULT_INPUT_PATH
+
+        input_path = Path(user_input)
+        if not input_path.exists():
+            print(f"Error: Path '{input_path}' does not exist.")
+            continue
+        if not input_path.is_dir():
+            print(f"Error: '{input_path}' is not a directory.")
+            continue
+
+        return input_path
 
 
 def main():
-    setup_directories()
+    input_directory = get_input_directory()
 
-    for file_path in INPUT_DIRECTORY_PATH.iterdir():
-        if file_path.is_file():
-            source_file_path = INPUT_DIRECTORY_PATH / file_path.name
-            output_file_path = truncate_file(source_file_path)
-            print(f"{source_file_path} => {output_file_path}")
-            copyfile(source_file_path, output_file_path)
+    # Collect all files first to show progress (skip hidden files)
+    print("Scanning directory...")
+    files = [f for f in input_directory.iterdir() if f.is_file() and not f.name.startswith('.')]
+    total_files = len(files)
+
+    if total_files == 0:
+        print("No files found in the directory.")
+        return
+
+    print(f"Found {total_files} file(s). Starting processing...\n")
+
+    renamed_count = 0
+    skipped_count = 0
+    error_count = 0
+
+    for index, file_path in enumerate(files, 1):
+        try:
+            source_file_path = input_directory / file_path.name
+            new_file_name = truncate_file_name(source_file_path)
+
+            # Only rename if the name actually changed
+            if new_file_name != source_file_path.name:
+                # Ensure the new filename is unique
+                unique_file_name = get_unique_filename(input_directory, new_file_name)
+                new_file_path = input_directory / unique_file_name
+
+                if unique_file_name != new_file_name:
+                    print(f"[{index}/{total_files}] Renaming: {source_file_path.name} => {unique_file_name} (duplicate, added counter)")
+                else:
+                    print(f"[{index}/{total_files}] Renaming: {source_file_path.name} => {unique_file_name}")
+
+                source_file_path.rename(new_file_path)
+                renamed_count += 1
+            else:
+                print(f"[{index}/{total_files}] Skipping (name already OK): {source_file_path.name}")
+                skipped_count += 1
+        except PermissionError:
+            print(f"[{index}/{total_files}] Error: Permission denied for {file_path.name}")
+            error_count += 1
+        except FileNotFoundError:
+            print(f"[{index}/{total_files}] Error: File not found (may have been moved): {file_path.name}")
+            error_count += 1
+        except Exception as e:
+            print(f"[{index}/{total_files}] Error processing {file_path.name}: {e}")
+            error_count += 1
+
+    print(f"\nCompleted! Renamed: {renamed_count}, Skipped: {skipped_count}, Errors: {error_count}")
 
 
-def setup_directories():
-    Path(OUTPUT_DIRECTORY_PATH).mkdir(parents=True, exist_ok=True)
-
-
-def truncate_file(source_file_path):
+def truncate_file_name(source_file_path):
+    """Return the truncated filename if needed, otherwise return original name."""
     if len(source_file_path.name) > MAX_FILENAME_LENGTH:
+        # Account for extension length when truncating
+        suffix_len = len(source_file_path.suffix)
+        stem_max_len = MAX_FILENAME_LENGTH - suffix_len
         new_file_name = (
-            source_file_path.stem[:MAX_FILENAME_LENGTH] + source_file_path.suffix
+            source_file_path.stem[:stem_max_len] + source_file_path.suffix
         )
-        output_file_name = OUTPUT_DIRECTORY_PATH / new_file_name
+        return new_file_name
     else:
-        output_file_name = source_file_path
-    return output_file_name
+        return source_file_path.name
+
+
+def get_unique_filename(directory, base_name):
+    """Return a unique filename, adding a counter if the name already exists."""
+    if not (directory / base_name).exists():
+        return base_name
+
+    # File exists, add a counter
+    stem = Path(base_name).stem
+    suffix = Path(base_name).suffix
+    counter = 1
+
+    while True:
+        new_name = f"{stem}_{counter}{suffix}"
+        if not (directory / new_name).exists():
+            return new_name
+        counter += 1
 
 
 if __name__ == "__main__":
