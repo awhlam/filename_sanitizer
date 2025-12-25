@@ -29,7 +29,7 @@ def main() -> None:
 
     # Collect all files first to show progress (skip hidden files)
     print("Scanning directory...")
-    files = [f for f in input_directory.iterdir() if f.is_file() and not f.name.startswith('.')]
+    files = [f for f in input_directory.iterdir() if f.is_file() and not f.name.startswith(".")]
     total_files = len(files)
 
     if total_files == 0:
@@ -54,20 +54,33 @@ def main() -> None:
                 new_file_path = input_directory / unique_file_name
 
                 if unique_file_name != new_file_name:
-                    print(f"[{index}/{total_files}] Renaming: {source_file_path.name} => {unique_file_name} (duplicate, added counter)")
+                    msg = (
+                        f"[{index}/{total_files}] Renaming: {source_file_path.name} => "
+                        f"{unique_file_name} (duplicate, added counter)"
+                    )
+                    print(msg)
                 else:
-                    print(f"[{index}/{total_files}] Renaming: {source_file_path.name} => {unique_file_name}")
+                    msg = (
+                        f"[{index}/{total_files}] Renaming: {source_file_path.name} => "
+                        f"{unique_file_name}"
+                    )
+                    print(msg)
 
                 source_file_path.rename(new_file_path)
                 renamed_count += 1
             else:
-                print(f"[{index}/{total_files}] Skipping (name already OK): {source_file_path.name}")
+                msg = f"[{index}/{total_files}] Skipping (name already OK): {source_file_path.name}"
+                print(msg)
                 skipped_count += 1
         except PermissionError:
             print(f"[{index}/{total_files}] Error: Permission denied for {file_path.name}")
             error_count += 1
         except FileNotFoundError:
-            print(f"[{index}/{total_files}] Error: File not found (may have been moved): {file_path.name}")
+            msg = (
+                f"[{index}/{total_files}] Error: File not found (may have been moved): "
+                f"{file_path.name}"
+            )
+            print(msg)
             error_count += 1
         except Exception as e:
             print(f"[{index}/{total_files}] Error processing {file_path.name}: {e}")
@@ -82,12 +95,8 @@ def truncate_file_name(source_file_path: Path) -> str:
         # Account for extension length when truncating
         suffix_len = len(source_file_path.suffix)
         stem_max_len = MAX_FILENAME_LENGTH - suffix_len
-        new_file_name = (
-            source_file_path.stem[:stem_max_len] + source_file_path.suffix
-        )
-        return new_file_name
-    else:
-        return source_file_path.name
+        return source_file_path.stem[:stem_max_len] + source_file_path.suffix
+    return source_file_path.name
 
 
 def get_unique_filename(directory: Path, base_name: str) -> str:
