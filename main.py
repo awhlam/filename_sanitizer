@@ -1,10 +1,10 @@
 from pathlib import Path
 
-MAX_FILENAME_LENGTH = 100
-DEFAULT_INPUT_PATH = "/Volumes/docker/JDownloader2/output"
+MAX_FILENAME_LENGTH: int = 100
+DEFAULT_INPUT_PATH: str = "/Volumes/docker/JDownloader2/output"
 
 
-def get_input_directory():
+def get_input_directory() -> Path:
     """Prompt user for input directory path and validate it."""
     while True:
         user_input = input(f"Enter the folder path (default: {DEFAULT_INPUT_PATH}): ").strip()
@@ -24,7 +24,7 @@ def get_input_directory():
         return input_path
 
 
-def main():
+def main() -> None:
     input_directory = get_input_directory()
 
     # Collect all files first to show progress (skip hidden files)
@@ -76,7 +76,7 @@ def main():
     print(f"\nCompleted! Renamed: {renamed_count}, Skipped: {skipped_count}, Errors: {error_count}")
 
 
-def truncate_file_name(source_file_path):
+def truncate_file_name(source_file_path: Path) -> str:
     """Return the truncated filename if needed, otherwise return original name."""
     if len(source_file_path.name) > MAX_FILENAME_LENGTH:
         # Account for extension length when truncating
@@ -90,7 +90,7 @@ def truncate_file_name(source_file_path):
         return source_file_path.name
 
 
-def get_unique_filename(directory, base_name):
+def get_unique_filename(directory: Path, base_name: str) -> str:
     """Return a unique filename, adding a counter if the name already exists."""
     if not (directory / base_name).exists():
         return base_name
