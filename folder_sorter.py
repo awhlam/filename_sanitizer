@@ -63,16 +63,26 @@ def group_files_by_date(directory: Path) -> Dict[str | None, List[Path]]:
     return date_groups
 
 
-def move_files_to_folder(files: List[Path], target_folder: Path) -> int:
+def move_files_to_folder(
+    files: List[Path], target_folder: Path, show_progress: bool = False, current_index: int = 0, total_files: int = 0
+) -> int:
     """
     Move files to target folder, creating it if necessary.
 
-    Returns the number of successfully moved files.
+    Args:
+        files: List of file paths to move
+        target_folder: Destination folder
+        show_progress: Whether to show per-file progress indicators
+        current_index: Starting index for progress display
+        total_files: Total number of files for progress display
+
+    Returns:
+        The number of successfully moved files.
     """
     target_folder.mkdir(parents=True, exist_ok=True)
     moved_count = 0
 
-    for file_path in files:
+    for idx, file_path in enumerate(files):
         try:
             target_path = target_folder / file_path.name
             # Handle name conflicts by adding a counter
@@ -87,6 +97,10 @@ def move_files_to_folder(files: List[Path], target_folder: Path) -> int:
 
             file_path.rename(target_path)
             moved_count += 1
+
+            if show_progress:
+                file_index = current_index + idx + 1
+                print(f"[{file_index}/{total_files}] Moved: {file_path.name} => {target_folder.name}/")
         except PermissionError:
             print(f"Error: Permission denied for {file_path.name}")
         except FileNotFoundError:
@@ -130,18 +144,28 @@ def main() -> None:
 
     moved_to_dates = 0
     moved_to_unsorted = 0
+    current_file_index = 0
 
     # Move files to date-based folders
     for date, files in files_to_sort.items():
         target_folder = input_directory / date
         print(f"Moving {len(files)} file(s) to folder: {date}")
-        moved_to_dates += move_files_to_folder(files, target_folder)
+        moved_to_dates += move_files_to_folder(
+            files, target_folder, show_progress=True, current_index=current_file_index, total_files=total_files
+        )
+        current_file_index += len(files)
 
     # Move single files and files without dates to Unsorted
     if files_to_unsorted:
         unsorted_folder = input_directory / UNSORTED_FOLDER_NAME
         print(f"\nMoving {len(files_to_unsorted)} file(s) to folder: {UNSORTED_FOLDER_NAME}")
-        moved_to_unsorted = move_files_to_folder(files_to_unsorted, unsorted_folder)
+        moved_to_unsorted = move_files_to_folder(
+            files_to_unsorted,
+            unsorted_folder,
+            show_progress=True,
+            current_index=current_file_index,
+            total_files=total_files,
+        )
 
     print(
         f"\nCompleted! Moved {moved_to_dates} file(s) to date folders, "
